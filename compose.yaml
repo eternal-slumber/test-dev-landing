@@ -1,0 +1,44 @@
+services:
+  app: 
+    image: serversideup/php:8.4-fpm-nginx
+    container_name: developer-landing-app
+    working_dir: /var/www/html
+    ports:
+      - "8000:8080"
+    volumes:
+      - ./:/var/www/html
+    environment:
+      PHP_OPCACHE_ENABLE: "0"
+    depends_on:
+      - postgres
+      - redis
+  postgres:
+    image: postgres:17-alpine
+    container_name: developer-landing-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: test-dev-landing
+      POSTGRES_USER: developer
+      POSTGRES_PASSWORD: secret
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: developer-landing-redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: developer-landing-mailpit
+    restart: unless-stopped
+    ports:
+      - "1026:1025"
+      - "8026:8025"
+
+volumes:
+  postgres_data:

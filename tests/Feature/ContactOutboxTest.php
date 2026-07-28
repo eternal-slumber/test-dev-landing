@@ -14,7 +14,9 @@ use App\Services\ContactStepManager;
 use App\Services\OpenAiContactClassifier;
 use App\Services\OutboxPublisher;
 use Illuminate\Contracts\Bus\Dispatcher;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -215,9 +217,9 @@ test('processing job classifies once and creates email outbox messages', functio
     });
 });
 
-test('unavailable classifier falls back and still creates email messages', function () {
+test('non-retryable AI client error falls back immediately', function () {
     Http::fake([
-        'https://api.openai.test/v1/chat/completions' => Http::response([], 500),
+        'https://api.openai.test/v1/chat/completions' => Http::response([], 401),
     ]);
 
     $contact = createContactForOutbox();
@@ -239,7 +241,104 @@ test('unavailable classifier falls back and still creates email messages', funct
         ->and($classification->status)->toBe(ContactStep::STATUS_FALLBACK)
         ->and($contact->outboxMessages()->count())->toBe(3);
 
-    Http::assertSentCount(2);
+    Http::assertSentCount(1);
+});
+
+test('missing AI key falls back without an HTTP request', function () {
+    config(['services.openai.key' => null]);
+    $contact = createContactForOutbox();
+
+    (new ProcessContact($contact->id))->handle(
+        app(ContactRepository::class),
+        app(ContactStepManager::class),
+        app(OpenAiContactClassifier::class),
+    );
+
+    $classification = $contact->steps()
+        ->where('type', ContactStep::TYPE_CLASSIFICATION)
+        ->sole();
+
+    expect($classification->status)->toBe(ContactStep::STATUS_FALLBACK)
+        ->and($contact->outboxMessages()->count())->toBe(3);
+
+    Http::assertNothingSent();
+});
+
+test('transient AI responses leave classification open for queue retry', function (int $status) {
+    Http::fake([
+        'https://api.openai.test/v1/chat/completions' => Http::response([], $status),
+    ]);
+
+    $contact = createContactForOutbox();
+
+    expect(fn () => (new ProcessContact($contact->id))->handle(
+        app(ContactRepository::class),
+        app(ContactStepManager::class),
+        app(OpenAiContactClassifier::class),
+    ))->toThrow(RequestException::class);
+
+    $classification = $contact->steps()
+        ->where('type', ContactStep::TYPE_CLASSIFICATION)
+        ->sole();
+
+    expect($classification)
+        ->status->toBe(ContactStep::STATUS_PROCESSING)
+        ->attempts->toBe(1)
+        ->and($contact->outboxMessages()->count())->toBe(1);
+
+    Http::assertSentCount(1);
+})->with([
+    'request timeout' => 408,
+    'rate limited' => 429,
+    'provider error' => 500,
+]);
+
+test('AI connection errors leave classification open for queue retry', function () {
+    Http::fake([
+        'https://api.openai.test/v1/chat/completions' => Http::failedConnection(),
+    ]);
+
+    $contact = createContactForOutbox();
+
+    expect(fn () => (new ProcessContact($contact->id))->handle(
+        app(ContactRepository::class),
+        app(ContactStepManager::class),
+        app(OpenAiContactClassifier::class),
+    ))->toThrow(ConnectionException::class);
+
+    $classification = $contact->steps()
+        ->where('type', ContactStep::TYPE_CLASSIFICATION)
+        ->sole();
+
+    expect($classification)
+        ->status->toBe(ContactStep::STATUS_PROCESSING)
+        ->attempts->toBe(1)
+        ->and($contact->outboxMessages()->count())->toBe(1);
+
+    Http::assertSentCount(1);
+});
+
+test('exhausted AI retries fall back and enqueue both emails', function () {
+    $contact = createContactForOutbox();
+    $job = new ProcessContact($contact->id);
+
+    expect(app(ContactStepManager::class)->claim(
+        $contact->id,
+        ContactStep::TYPE_CLASSIFICATION,
+        $job->workerId,
+    ))->toBeTrue();
+
+    $job->failed(new RuntimeException('AI unavailable'));
+
+    $classification = $contact->steps()
+        ->where('type', ContactStep::TYPE_CLASSIFICATION)
+        ->sole();
+
+    expect($classification)
+        ->status->toBe(ContactStep::STATUS_FALLBACK)
+        ->last_error->toBe(RuntimeException::class)
+        ->locked_by->toBeNull()
+        ->and($contact->outboxMessages()->count())->toBe(3);
 });
 
 test('invalid AI analysis falls back without saving partial data', function (array $analysis) {

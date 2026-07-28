@@ -4,12 +4,10 @@ namespace App\Services;
 
 use App\DTO\ContactAnalysisResult;
 use Illuminate\Http\Client\ConnectionException;
-use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use Throwable;
 
 final class OpenAiContactClassifier
 {
@@ -44,14 +42,6 @@ final class OpenAiContactClassifier
                 )
                 ->timeout(
                     (int) config('services.openai.timeout'),
-                )
-                ->retry(
-                    2,
-                    100,
-                    fn (Throwable $exception): bool => $exception instanceof ConnectionException
-                        || ($exception instanceof RequestException
-                            && $exception->response->serverError()),
-                    throw: false,
                 )
                 ->post(
                     (string) config('services.openai.url'),
@@ -119,16 +109,28 @@ PROMPT,
                         'stream' => false,
                     ],
                 );
-        } catch (ConnectionException) {
+        } catch (ConnectionException $exception) {
             Log::warning(
                 'OpenAI contact analysis failed: connection error.',
             );
 
-            return ContactAnalysisResult::unavailable();
+            throw $exception;
+        }
+
+        if (
+            $response->status() === 408
+            || $response->status() === 429
+            || $response->serverError()
+        ) {
+            Log::warning('OpenAI contact analysis will be retried.', [
+                'status' => $response->status(),
+            ]);
+
+            $response->throw();
         }
 
         if (! $response->successful()) {
-            Log::warning('OpenAI contact analysis failed.', [
+            Log::warning('OpenAI contact analysis skipped.', [
                 'status' => $response->status(),
             ]);
 

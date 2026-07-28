@@ -741,31 +741,33 @@ export default function Welcome() {
 
                             {wasSuccessful && (
                                 <div
-                                    className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-emerald-900 dark:text-emerald-200"
+                                    className="grid gap-1 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-emerald-900 dark:text-emerald-200"
                                     role="status"
                                     aria-live="polite"
                                 >
                                     <p className="font-semibold">
                                         Обращение принято
                                     </p>
-                                    <p className="mt-1 text-sm leading-6">
-                                        Мы сохранили заявку и отправили
-                                        подтверждение на указанную почту.
+                                    <p className="text-sm leading-6">
+                                        Мы сохранили заявку и поставили
+                                        уведомления в обработку. Подтверждение
+                                        придёт на указанную почту.
                                     </p>
                                 </div>
                             )}
 
                             {hasRequestError && (
                                 <div
-                                    className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-red-900 dark:text-red-200"
+                                    className="grid gap-1 rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-red-900 dark:text-red-200"
                                     role="alert"
                                 >
                                     <p className="font-semibold">
                                         Не удалось связаться с сервером
                                     </p>
-                                    <p className="mt-1 text-sm leading-6">
+                                    <p className="text-sm leading-6">
                                         Проверьте соединение и повторите
-                                        отправку. Введённые данные сохранены.
+                                        отправку. Введённые данные остаются в
+                                        форме.
                                     </p>
                                 </div>
                             )}

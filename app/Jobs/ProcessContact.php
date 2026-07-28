@@ -2,7 +2,6 @@
 
 namespace App\Jobs;
 
-use App\DTO\ContactAnalysisResult;
 use App\Models\ContactStep;
 use App\Models\OutboxMessage;
 use App\Repositories\ContactRepository;
@@ -49,16 +48,7 @@ final class ProcessContact implements ShouldQueue
 
         $contact = $contacts->findOrFail($this->contactId);
 
-        try {
-            $analysis = $classifier->classify($contact->comment);
-        } catch (Throwable $exception) {
-            Log::warning('Contact analysis failed unexpectedly.', [
-                'contact_id' => $contact->id,
-                'exception' => $exception::class,
-            ]);
-
-            $analysis = ContactAnalysisResult::unavailable();
-        }
+        $analysis = $classifier->classify($contact->comment);
 
         DB::transaction(function () use (
             $contacts,

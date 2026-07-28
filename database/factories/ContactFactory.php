@@ -23,6 +23,9 @@ class ContactFactory extends Factory
             'email' => fake()->safeEmail(),
             'comment' => fake()->paragraph(),
             'ai_category' => null,
+            'ai_summary' => null,
+            'ai_suggested_reply' => null,
+            'idempotency_key' => fake()->uuid(),
         ];
     }
 }

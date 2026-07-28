@@ -1,15 +1,37 @@
 <x-mail::message>
-# Новое обращение
+# Новое обращение #{{ $contact->id }}
+
+@if ($contact->ai_summary !== null)
+**Категория:** {{ $categoryLabel }}
+
+## Краткое содержание
+
+{{ $contact->ai_summary }}
+@else
+**AI-анализ временно недоступен.**
+@endif
+
+## Контакты
 
 **Имя:** {{ $contact->name }}
 
-**Телефон:** {{ $contact->phone }}
-
 **Email:** {{ $contact->email }}
 
-**AI-категория:** {{ $contact->ai_category ?? 'AI недоступен' }}
+**Телефон:** {{ $contact->phone }}
 
-## Комментарий
+@if ($contact->ai_suggested_reply !== null)
+## Предложенный ответ
+
+<x-mail::panel>
+{{ $contact->ai_suggested_reply }}
+</x-mail::panel>
+
+<x-mail::button :url="$mailto">
+Ответить отправителю
+</x-mail::button>
+@endif
+
+## Полный текст обращения
 
 <x-mail::panel>
 {{ $contact->comment }}

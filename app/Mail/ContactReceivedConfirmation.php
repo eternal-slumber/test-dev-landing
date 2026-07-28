@@ -4,7 +4,6 @@ namespace App\Mail;
 
 use App\Models\Contact;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Mail\Mailables\Content;
@@ -20,8 +19,7 @@ class ContactReceivedConfirmation extends Mailable
      */
     public function __construct(
         public Contact $contact
-    )
-    {
+    ) {
         //
     }
 
@@ -31,7 +29,7 @@ class ContactReceivedConfirmation extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: "Ваше обращение получено",
+            subject: 'Ваше обращение получено',
         );
     }
 

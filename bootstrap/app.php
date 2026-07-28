@@ -17,7 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-
+        $middleware->trustProxies(at: ['REMOTE_ADDR']);
         $middleware->append(ApiRequestLogger::class);
 
         $middleware->encryptCookies(except: ['appearance']);

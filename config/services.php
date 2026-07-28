@@ -24,10 +24,10 @@ return [
 
     'openai' => [
         'key' => env('OPENAI_API_KEY'),
-        'model' => env('OPENAI_MODEL', 'gpt-5-mini'),
-        'url' => env('OPENAI_URL', 'https://api.openai.com/v1/responses'),
+        'model' => env('OPENAI_MODEL', 'openrouter/free'),
+        'url' => env('OPENAI_URL', 'https://openrouter.ai/api/v1/chat/completions'),
         'connect_timeout' => (int) env('OPENAI_CONNECT_TIMEOUT', 2),
-        'timeout' => (int) env('OPENAI_TIMEOUT', 5),
+        'timeout' => (int) env('OPENAI_TIMEOUT', 20),
     ],
 
     'ses' => [

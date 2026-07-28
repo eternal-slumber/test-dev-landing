@@ -2,6 +2,7 @@
 
 namespace App\Repositories;
 
+use App\DTO\ContactAnalysisResult;
 use App\Models\Contact;
 
 interface ContactRepository
@@ -11,5 +12,10 @@ interface ContactRepository
      */
     public function create(array $data): Contact;
 
-    public function updateCategory(Contact $contact, string $category): void;
+    public function findOrFail(int $id): Contact;
+
+    public function updateAnalysis(
+        Contact $contact,
+        ContactAnalysisResult $analysis,
+    ): void;
 }

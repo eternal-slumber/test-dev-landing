@@ -1,17 +1,73 @@
 services:
-  app: 
+  app:
     image: serversideup/php:8.4-fpm-nginx
     container_name: developer-landing-app
     working_dir: /var/www/html
     ports:
-      - "8000:8080"
+      - "127.0.0.1:${APP_HTTP_PORT:-8000}:8080"
     volumes:
       - ./:/var/www/html
     environment:
       PHP_OPCACHE_ENABLE: "0"
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  queue:
+    image: serversideup/php:8.4-fpm-nginx
+    working_dir: /var/www/html
+    command:
+      - php
+      - artisan
+      - queue:work
       - redis
+      - --queue=processing,mail
+      - --sleep=1
+      - --tries=4
+      - --backoff=10,60,300
+      - --timeout=60
+      - --max-time=3600
+    volumes:
+      - ./:/var/www/html
+    environment:
+      PHP_OPCACHE_ENABLE: "0"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    restart: unless-stopped
+    stop_grace_period: 70s
+    healthcheck:
+      disable: true
+
+  outbox:
+    image: serversideup/php:8.4-fpm-nginx
+    working_dir: /var/www/html
+    command:
+      - php
+      - artisan
+      - outbox:work
+      - --sleep=1
+      - --batch=50
+    volumes:
+      - ./:/var/www/html
+    environment:
+      PHP_OPCACHE_ENABLE: "0"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    stop_grace_period: 40s
+    healthcheck:
+      disable: true
+
   postgres:
     image: postgres:17-alpine
     container_name: developer-landing-postgres
@@ -21,16 +77,29 @@ services:
       POSTGRES_USER: developer
       POSTGRES_PASSWORD: secret
     ports:
-      - "5434:5432"
+      - "127.0.0.1:5434:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U developer -d test-dev-landing"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   redis:
     image: redis:7-alpine
     container_name: developer-landing-redis
     restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
     ports:
-      - "6380:6379"
+      - "127.0.0.1:6380:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   mailpit:
     image: axllent/mailpit:latest
@@ -42,3 +111,4 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:

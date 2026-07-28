@@ -1,0 +1,267 @@
+openapi: 3.1.0
+info:
+    title: Developer Landing Contact API
+    version: 1.0.0
+    description: API формы обратной связи с AI-классификацией и email-уведомлениями.
+servers:
+    - url: http://localhost:8000
+      description: Local Docker environment
+paths:
+    /api/health:
+        get:
+            operationId: getHealth
+            summary: Проверить состояние сервиса
+            description: |
+                Проверяет соединения с PostgreSQL и Redis и наличие конфигурации
+                AI и mail. Внешние запросы к AI и SMTP не выполняются.
+            tags:
+                - System
+            responses:
+                '200':
+                    description: Сервис настроен и инфраструктура доступна
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/HealthResponse'
+                            example:
+                                status: ok
+                                services:
+                                    database: ok
+                                    redis: ok
+                                    ai: configured
+                                    mail: configured
+                                timestamp: '2026-07-28T15:30:00+00:00'
+                '503':
+                    description: Часть инфраструктуры недоступна или не настроена
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/HealthResponse'
+                            example:
+                                status: degraded
+                                services:
+                                    database: ok
+                                    redis: error
+                                    ai: configured
+                                    mail: configured
+                                timestamp: '2026-07-28T15:30:00+00:00'
+    /api/contact:
+        post:
+            operationId: storeContact
+            summary: Принять обращение
+            description: |
+                Атомарно сохраняет обращение и outbox-сообщение. AI-классификация
+                и два email выполняются асинхронно с retry. Недоступность внешних
+                сервисов не требует повторной отправки обращения клиентом.
+            tags:
+                - Contacts
+            parameters:
+                - $ref: '#/components/parameters/IdempotencyKey'
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/StoreContactRequest'
+                        example:
+                            name: Артем
+                            phone: +7 (999) 123-45-67
+                            email: artem@example.com
+                            comment: Хочу обсудить разработку веб-сервиса.
+            responses:
+                '201':
+                    description: Обращение и фоновая задача надёжно сохранены
+                    headers:
+                        X-Request-ID:
+                            $ref: '#/components/headers/RequestId'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ContactAcceptedResponse'
+                            example:
+                                data:
+                                    id: 1
+                                    status: accepted
+                                message: Обращение принято
+                '409':
+                    description: Idempotency key использован для другого обращения
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse'
+                            example:
+                                message: Idempotency-Key уже использован для другого обращения.
+                '422':
+                    description: Ошибка валидации
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ValidationErrorResponse'
+                            example:
+                                message: The email field must be a valid email address.
+                                errors:
+                                    email:
+                                        - The email field must be a valid email address.
+                '429':
+                    description: Превышен лимит обращений с IP
+                    headers:
+                        Retry-After:
+                            description: Секунды до следующей попытки
+                            schema:
+                                type: integer
+                        X-RateLimit-Limit:
+                            description: Максимум запросов в текущем окне
+                            schema:
+                                type: integer
+                        X-RateLimit-Remaining:
+                            description: Оставшееся число запросов
+                            schema:
+                                type: integer
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse'
+                            example:
+                                message: Too Many Attempts.
+                '500':
+                    description: Непредвиденная внутренняя ошибка
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse'
+                            example:
+                                message: Server Error
+components:
+    parameters:
+        IdempotencyKey:
+            name: Idempotency-Key
+            in: header
+            required: true
+            description: UUID запроса. Повтор с теми же данными безопасен.
+            schema:
+                type: string
+                format: uuid
+            example: 7dbba7c6-7cb9-4c9d-8d14-8cf887f6e582
+    headers:
+        RequestId:
+            description: UUID запроса в API-log
+            schema:
+                type: string
+                format: uuid
+    schemas:
+        HealthResponse:
+            type: object
+            additionalProperties: false
+            required:
+                - status
+                - services
+                - timestamp
+            properties:
+                status:
+                    type: string
+                    enum:
+                        - ok
+                        - degraded
+                services:
+                    type: object
+                    additionalProperties: false
+                    required:
+                        - database
+                        - redis
+                        - ai
+                        - mail
+                    properties:
+                        database:
+                            type: string
+                            enum:
+                                - ok
+                                - error
+                        redis:
+                            type: string
+                            enum:
+                                - ok
+                                - error
+                        ai:
+                            type: string
+                            enum:
+                                - configured
+                                - not_configured
+                        mail:
+                            type: string
+                            enum:
+                                - configured
+                                - not_configured
+                timestamp:
+                    type: string
+                    format: date-time
+        StoreContactRequest:
+            type: object
+            required:
+                - name
+                - phone
+                - email
+                - comment
+            properties:
+                name:
+                    type: string
+                    minLength: 2
+                    maxLength: 100
+                    example: Артем
+                phone:
+                    type: string
+                    maxLength: 30
+                    pattern: '^(?=.*[0-9])[0-9+\s()\-]+$'
+                    example: +7 (999) 123-45-67
+                email:
+                    type: string
+                    format: email
+                    maxLength: 255
+                    example: artem@example.com
+                comment:
+                    type: string
+                    minLength: 10
+                    maxLength: 3000
+                    example: Хочу обсудить разработку веб-сервиса.
+        ContactAcceptedResponse:
+            type: object
+            additionalProperties: false
+            required:
+                - data
+                - message
+            properties:
+                data:
+                    type: object
+                    additionalProperties: false
+                    required:
+                        - id
+                        - status
+                    properties:
+                        id:
+                            type: integer
+                            minimum: 1
+                        status:
+                            type: string
+                            const: accepted
+                message:
+                    type: string
+                    const: Обращение принято
+        ErrorResponse:
+            type: object
+            required:
+                - message
+            properties:
+                message:
+                    type: string
+        ValidationErrorResponse:
+            allOf:
+                - $ref: '#/components/schemas/ErrorResponse'
+                - type: object
+                  required:
+                      - errors
+                  properties:
+                      errors:
+                          type: object
+                          additionalProperties:
+                              type: array
+                              items:
+                                  type: string

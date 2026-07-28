@@ -86,9 +86,12 @@ test('failed queue publish keeps outbox message for retry', function () {
         ->and($message->available_at->isFuture())->toBeTrue();
 });
 
-test('outbox stops retrying and logs critical after ten failures', function () {
+test('outbox exhaustion marks step failed and retry command reopens it', function () {
     $contact = createContactForOutbox();
     $contact->outboxMessages()->sole()->update(['attempts' => 9]);
+    $step = $contact->steps()
+        ->where('type', ContactStep::TYPE_CLASSIFICATION)
+        ->sole();
 
     $dispatcher = Mockery::mock(Dispatcher::class);
     $dispatcher
@@ -110,7 +113,11 @@ test('outbox stops retrying and logs critical after ten failures', function () {
         ->failed_at->not->toBeNull()
         ->published_at->toBeNull()
         ->locked_at->toBeNull()
-        ->locked_by->toBeNull();
+        ->locked_by->toBeNull()
+        ->and($step->refresh())
+        ->status->toBe(ContactStep::STATUS_FAILED)
+        ->last_error->toBe(RuntimeException::class)
+        ->finished_at->not->toBeNull();
 
     Log::shouldHaveReceived('critical')
         ->once()
@@ -119,6 +126,27 @@ test('outbox stops retrying and logs critical after ten failures', function () {
             Mockery::on(fn (array $context): bool => $context['outbox_message_id'] === $message->id
                 && $context['attempts'] === 10),
         );
+
+    $this->artisan('contact:retry-failed', ['contactId' => $contact->id])
+        ->expectsOutput("Retried 1 failed step(s) for contact [{$contact->id}].")
+        ->assertSuccessful();
+
+    expect($step->refresh())
+        ->status->toBe(ContactStep::STATUS_PENDING)
+        ->last_error->toBeNull()
+        ->finished_at->toBeNull()
+        ->and($message->refresh())
+        ->attempts->toBe(0)
+        ->failed_at->toBeNull()
+        ->published_at->toBeNull()
+        ->last_error->toBeNull()
+        ->and($message->available_at->isPast())->toBeTrue();
+
+    $recoveryDispatcher = Mockery::mock(Dispatcher::class);
+    $recoveryDispatcher->shouldReceive('dispatch')->once();
+
+    expect((new OutboxPublisher($recoveryDispatcher))->publishBatch())->toBe(1)
+        ->and($message->refresh()->published_at)->not->toBeNull();
 });
 
 test('retry command resets failed step and reopens its outbox message', function () {

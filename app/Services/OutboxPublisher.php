@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Jobs\ProcessContact;
 use App\Jobs\SendContactConfirmationEmail;
 use App\Jobs\SendContactOwnerEmail;
+use App\Models\ContactStep;
 use App\Models\OutboxMessage;
 use Illuminate\Contracts\Bus\Dispatcher;
 use Illuminate\Database\Eloquent\Collection;
@@ -130,10 +131,39 @@ final class OutboxPublisher
             $updates['available_at'] = now()->addSeconds($delay);
         }
 
-        $updated = OutboxMessage::query()
-            ->whereKey($message->id)
-            ->where('locked_by', $this->workerId)
-            ->update($updates);
+        $updated = DB::transaction(function () use (
+            $message,
+            $exception,
+            $attempts,
+            $updates,
+        ): int {
+            $updated = OutboxMessage::query()
+                ->whereKey($message->id)
+                ->where('locked_by', $this->workerId)
+                ->update($updates);
+
+            if ($updated === 0 || $attempts < self::MAX_ATTEMPTS) {
+                return $updated;
+            }
+
+            $stepType = $this->contactStepType($message->type);
+
+            if ($stepType !== null) {
+                ContactStep::query()
+                    ->where('contact_id', $message->contact_id)
+                    ->where('type', $stepType)
+                    ->where('status', ContactStep::STATUS_PENDING)
+                    ->update([
+                        'status' => ContactStep::STATUS_FAILED,
+                        'last_error' => $exception::class,
+                        'locked_by' => null,
+                        'locked_until' => null,
+                        'finished_at' => now(),
+                    ]);
+            }
+
+            return $updated;
+        });
 
         if ($updated === 0) {
             return;
@@ -154,5 +184,15 @@ final class OutboxPublisher
         }
 
         Log::warning('Outbox message publish failed.', $context);
+    }
+
+    private function contactStepType(string $outboxType): ?string
+    {
+        return match ($outboxType) {
+            OutboxMessage::TYPE_PROCESS_CONTACT => ContactStep::TYPE_CLASSIFICATION,
+            OutboxMessage::TYPE_OWNER_EMAIL => ContactStep::TYPE_OWNER_EMAIL,
+            OutboxMessage::TYPE_CONFIRMATION_EMAIL => ContactStep::TYPE_CONFIRMATION_EMAIL,
+            default => null,
+        };
     }
 }

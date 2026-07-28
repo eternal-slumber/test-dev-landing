@@ -19,6 +19,9 @@ paths:
             responses:
                 '200':
                     description: Сервис настроен и инфраструктура доступна
+                    headers:
+                        X-Request-ID:
+                            $ref: '#/components/headers/RequestId'
                     content:
                         application/json:
                             schema:
@@ -33,6 +36,9 @@ paths:
                                 timestamp: '2026-07-28T15:30:00+00:00'
                 '503':
                     description: Часть инфраструктуры недоступна или не настроена
+                    headers:
+                        X-Request-ID:
+                            $ref: '#/components/headers/RequestId'
                     content:
                         application/json:
                             schema:
@@ -85,6 +91,9 @@ paths:
                                 message: Обращение принято
                 '409':
                     description: Idempotency key использован для другого обращения
+                    headers:
+                        X-Request-ID:
+                            $ref: '#/components/headers/RequestId'
                     content:
                         application/json:
                             schema:
@@ -93,6 +102,9 @@ paths:
                                 message: Idempotency-Key уже использован для другого обращения.
                 '422':
                     description: Ошибка валидации
+                    headers:
+                        X-Request-ID:
+                            $ref: '#/components/headers/RequestId'
                     content:
                         application/json:
                             schema:
@@ -105,6 +117,8 @@ paths:
                 '429':
                     description: Превышен лимит обращений с IP
                     headers:
+                        X-Request-ID:
+                            $ref: '#/components/headers/RequestId'
                         Retry-After:
                             description: Секунды до следующей попытки
                             schema:
@@ -125,6 +139,9 @@ paths:
                                 message: Too Many Attempts.
                 '500':
                     description: Непредвиденная внутренняя ошибка
+                    headers:
+                        X-Request-ID:
+                            $ref: '#/components/headers/RequestId'
                     content:
                         application/json:
                             schema:
@@ -210,7 +227,7 @@ components:
                 phone:
                     type: string
                     maxLength: 30
-                    pattern: '^(?=.*[0-9])[0-9+\s()\-]+$'
+                    pattern: '^\+?(?=(?:\D*\d){10,15}\D*$)[0-9\s()\-]+$'
                     example: +7 (999) 123-45-67
                 email:
                     type: string

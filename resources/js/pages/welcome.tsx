@@ -25,6 +25,50 @@ type ContactResponse = {
     message: string;
 };
 
+type ContactRequestError = {
+    title: string;
+    message: string;
+};
+
+function contactRequestError(
+    status: number,
+    retryAfter?: string,
+): ContactRequestError {
+    if (status === 409) {
+        return {
+            title: 'Запрос уже использован',
+            message:
+                'Данные формы отличаются от первой отправки. Обновите страницу и отправьте обращение заново.',
+        };
+    }
+
+    if (status === 429) {
+        const seconds = Number.parseInt(retryAfter ?? '', 10);
+
+        return {
+            title: 'Слишком много попыток',
+            message:
+                Number.isNaN(seconds) || seconds < 1
+                    ? 'Повторите отправку немного позже.'
+                    : `Повторите отправку через ${seconds} с.`,
+        };
+    }
+
+    if (status === 500) {
+        return {
+            title: 'Сервис временно недоступен',
+            message:
+                'Попробуйте отправить форму позже. Введённые данные остаются в форме.',
+        };
+    }
+
+    return {
+        title: `Ошибка сервера (${status})`,
+        message:
+            'Попробуйте отправить форму позже. Введённые данные остаются в форме.',
+    };
+}
+
 const heroItems = [
     'надёжных API',
     'AI-интеграций',
@@ -84,7 +128,8 @@ export default function Welcome() {
         email: '',
         comment: '',
     });
-    const [hasRequestError, setHasRequestError] = useState(false);
+    const [requestError, setRequestError] =
+        useState<ContactRequestError | null>(null);
     const [heroItemIndex, setHeroItemIndex] = useState(0);
     const [activeArchitectureStepIndex, setActiveArchitectureStepIndex] =
         useState(0);
@@ -113,7 +158,7 @@ export default function Welcome() {
         }
 
         isSubmitting.current = true;
-        setHasRequestError(false);
+        setRequestError(null);
 
         void post(store.url(), {
             headers: {
@@ -123,13 +168,31 @@ export default function Welcome() {
                 reset();
                 idempotencyKey.current = crypto.randomUUID();
             },
-        })
-            .catch(() => {
-                setHasRequestError(true);
-            })
-            .finally(() => {
+            onError: () => {
+                setRequestError({
+                    title: 'Проверьте данные',
+                    message: 'Исправьте выделенные поля и повторите отправку.',
+                });
+            },
+            onHttpException: (response) => {
+                setRequestError(
+                    contactRequestError(
+                        response.status,
+                        response.headers['retry-after'],
+                    ),
+                );
+            },
+            onNetworkError: () => {
+                setRequestError({
+                    title: 'Нет соединения с сервером',
+                    message:
+                        'Проверьте интернет и повторите отправку. Введённые данные остаются в форме.',
+                });
+            },
+            onFinish: () => {
                 isSubmitting.current = false;
-            });
+            },
+        }).catch(() => undefined);
     }
 
     return (
@@ -756,18 +819,16 @@ export default function Welcome() {
                                 </div>
                             )}
 
-                            {hasRequestError && (
+                            {requestError && (
                                 <div
                                     className="grid gap-1 rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-red-900 dark:text-red-200"
                                     role="alert"
                                 >
                                     <p className="font-semibold">
-                                        Не удалось связаться с сервером
+                                        {requestError.title}
                                     </p>
                                     <p className="text-sm leading-6">
-                                        Проверьте соединение и повторите
-                                        отправку. Введённые данные остаются в
-                                        форме.
+                                        {requestError.message}
                                     </p>
                                 </div>
                             )}

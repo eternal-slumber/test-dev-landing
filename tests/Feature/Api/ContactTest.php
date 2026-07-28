@@ -104,6 +104,7 @@ test('invalid contact request is rejected and not stored', function () {
 
     $response
         ->assertUnprocessable()
+        ->assertHeader('X-Request-ID')
         ->assertHeaderContains('Content-Type', 'application/json')
         ->assertJsonValidationErrors('email');
 
@@ -131,7 +132,9 @@ test('contact and outbox are rolled back together', function () {
             'phone' => '+7 999 123-45-67',
             'email' => 'artem@example.com',
             'comment' => 'Хочу обсудить разработку веб-сервиса.',
-        ])->assertInternalServerError();
+        ])
+            ->assertInternalServerError()
+            ->assertHeader('X-Request-ID');
     } finally {
         Event::forget('eloquent.creating: '.OutboxMessage::class);
     }
@@ -162,11 +165,16 @@ test('contact endpoint is rate limited by ip', function () {
 
     $response
         ->assertTooManyRequests()
+        ->assertHeader('X-Request-ID')
         ->assertHeaderContains('Content-Type', 'application/json')
         ->assertHeader('X-RateLimit-Limit', '2')
         ->assertHeader('X-RateLimit-Remaining', '0');
 
-    expect($response->headers->has('Retry-After'))->toBeTrue()
+    $retryAfter = $response->headers->get('Retry-After');
+
+    expect($retryAfter)->not->toBeNull()
+        ->and(is_numeric($retryAfter))->toBeTrue()
+        ->and((int) $retryAfter)->toBeGreaterThan(0)
         ->and(Contact::query()->count())->toBe(2)
         ->and(OutboxMessage::query()->count())->toBe(2);
 
@@ -243,6 +251,7 @@ test('reusing an idempotency key for another payload is rejected', function () {
         'comment' => 'Это уже другое обращение пользователя.',
     ], $idempotencyKey)
         ->assertConflict()
+        ->assertHeader('X-Request-ID')
         ->assertJson([
             'message' => 'Idempotency-Key уже использован для другого обращения.',
         ]);
@@ -260,6 +269,7 @@ test('idempotency key header is required', function () {
         'comment' => 'Хочу обсудить разработку веб-сервиса.',
     ])
         ->assertUnprocessable()
+        ->assertHeader('X-Request-ID')
         ->assertJsonValidationErrors('idempotency_key');
 
     expect(Contact::query()->exists())->toBeFalse();
@@ -280,6 +290,7 @@ test('missing api route is logged and returned as json', function () {
 
     get('/api/missing')
         ->assertNotFound()
+        ->assertHeader('X-Request-ID')
         ->assertHeaderContains('Content-Type', 'application/json')
         ->assertJsonStructure(['message']);
 });
@@ -287,6 +298,7 @@ test('missing api route is logged and returned as json', function () {
 test('unsupported api method is returned as json', function () {
     get('/api/contact')
         ->assertMethodNotAllowed()
+        ->assertHeader('X-Request-ID')
         ->assertHeaderContains('Content-Type', 'application/json')
         ->assertJsonStructure(['message']);
 });
@@ -301,6 +313,7 @@ test('unexpected api error is returned safely as json', function () {
 
     get('/api/test-error')
         ->assertInternalServerError()
+        ->assertHeader('X-Request-ID')
         ->assertHeaderContains('Content-Type', 'application/json')
         ->assertJson([
             'message' => 'Server Error',
@@ -321,6 +334,7 @@ test('cors allows configured frontend origin', function () {
         'Access-Control-Request-Method' => 'POST',
     ])
         ->assertNoContent()
+        ->assertHeader('X-Request-ID')
         ->assertHeader(
             'Access-Control-Allow-Origin',
             'https://frontend.example',
@@ -341,6 +355,7 @@ test('cors does not allow unconfigured origin', function () {
         'Access-Control-Request-Method' => 'POST',
     ])
         ->assertNoContent()
+        ->assertHeader('X-Request-ID')
         ->assertHeader(
             'Access-Control-Allow-Origin',
             'https://frontend.example',

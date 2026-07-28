@@ -24,6 +24,7 @@ test('health endpoint reports configured services', function () {
 
     getJson(route('api.health'))
         ->assertOk()
+        ->assertHeader('X-Request-ID')
         ->assertHeader('Cache-Control', 'no-store, private')
         ->assertExactJson([
             'status' => 'ok',
@@ -44,6 +45,7 @@ test('health endpoint reports degraded infrastructure', function () {
 
     getJson(route('api.health'))
         ->assertServiceUnavailable()
+        ->assertHeader('X-Request-ID')
         ->assertJsonPath('status', 'degraded')
         ->assertJsonPath('services.database', 'ok')
         ->assertJsonPath('services.redis', 'error')

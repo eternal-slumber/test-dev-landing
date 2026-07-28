@@ -56,6 +56,18 @@ test('invalid phone is rejected', function (string $phone) use ($validContactDat
     'plus is not at the start' => '7+9991234567',
 ]);
 
+test('phone accepts ten to fifteen digits', function (string $phone) use ($validContactData) {
+    $data = $validContactData();
+    $data['phone'] = $phone;
+
+    $validator = Validator::make($data, (new StoreContactRequest)->rules());
+
+    expect($validator->passes())->toBeTrue();
+})->with([
+    'ten digits' => '+7 (999) 123-456',
+    'fifteen digits' => '+123 (456) 789-012-345',
+]);
+
 test('invalid name is rejected', function (string $name) use ($validContactData) {
     $data = $validContactData();
     $data['name'] = $name;

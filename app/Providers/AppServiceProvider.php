@@ -5,8 +5,11 @@ namespace App\Providers;
 use App\Repositories\ContactRepository;
 use App\Repositories\EloquentContactRepository;
 use Carbon\CarbonImmutable;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -27,6 +30,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        RateLimiter::for('contact', function (Request $request): Limit {
+            return Limit::perMinute(
+                (int) config('app.contact_rate_limit'),
+            )->by($request->ip());
+        });
+
         $this->configureDefaults();
     }
 

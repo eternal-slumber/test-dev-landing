@@ -52,6 +52,14 @@ return [
 
     'channels' => [
 
+        'api' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/api.log'),
+            'level' => env('LOG_LEVEL', 'info'),
+            'days' => 14,
+            'replace_placeholders' => true,
+        ],
+
         'stack' => [
             'driver' => 'stack',
             'channels' => explode(',', (string) env('LOG_STACK', 'single')),

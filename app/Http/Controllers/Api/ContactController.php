@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreContactRequest;
 use App\Services\ContactService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Context;
 
 final class ContactController extends Controller
 {
@@ -18,6 +19,8 @@ final class ContactController extends Controller
         $contact = $this->contactService->create(
             $request->validated(),
         );
+
+        Context::add('contact_id', $contact->id);
 
         return response()->json([
             'data' => [

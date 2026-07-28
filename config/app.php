@@ -84,6 +84,8 @@ return [
 
     'faker_locale' => env('APP_FAKER_LOCALE', 'en_US'),
 
+    'contact_rate_limit' => (int) env('CONTACT_RATE_LIMIT', 5),
+
     /*
     |--------------------------------------------------------------------------
     | Encryption Key

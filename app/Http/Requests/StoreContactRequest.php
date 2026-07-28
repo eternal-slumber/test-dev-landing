@@ -4,12 +4,20 @@ namespace App\Http\Requests;
 
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Str;
 
 class StoreContactRequest extends FormRequest
 {
     protected function prepareForValidation(): void
     {
+        $email = $this->input('email');
+        $comment = $this->input('comment');
+
         $this->merge([
+            'name' => $this->normalizeSingleLine($this->input('name')),
+            'phone' => $this->normalizeSingleLine($this->input('phone')),
+            'email' => is_string($email) ? Str::lower(trim($email)) : $email,
+            'comment' => is_string($comment) ? trim($comment) : $comment,
             'idempotency_key' => $this->header('Idempotency-Key'),
         ]);
     }
@@ -35,7 +43,6 @@ class StoreContactRequest extends FormRequest
                 'string',
                 'min:2',
                 'max:100',
-                "regex:/^(?=.*[\p{L}\p{M}])[\p{L}\p{M}\s'’\-]+$/u",
             ],
             'phone' => [
                 'required',
@@ -58,10 +65,18 @@ class StoreContactRequest extends FormRequest
             'name.required' => 'Укажите имя.',
             'name.min' => 'Имя должно содержать минимум 2 символа.',
             'name.max' => 'Имя не должно превышать 100 символов.',
-            'name.regex' => 'Имя может содержать только буквы, пробелы, дефисы и апострофы.',
             'phone.required' => 'Укажите номер телефона.',
             'phone.max' => 'Номер телефона не должен превышать 30 символов.',
             'phone.regex' => 'Введите номер телефона из 10–15 цифр.',
         ];
+    }
+
+    private function normalizeSingleLine(mixed $value): mixed
+    {
+        if (! is_string($value)) {
+            return $value;
+        }
+
+        return preg_replace('/[\t\r\n]+/', ' ', trim($value)) ?? trim($value);
     }
 }

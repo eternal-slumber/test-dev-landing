@@ -682,15 +682,14 @@ export default function Welcome() {
                                             event.preventDefault();
                                             setError(
                                                 'name',
-                                                'Введите имя из 2–100 букв.',
+                                                'Введите имя длиной от 2 до 100 символов.',
                                             );
                                         }}
                                         minLength={2}
                                         maxLength={100}
-                                        pattern="(?=.*[\p{L}\p{M}])[\p{L}\p{M}\s'’\-]{2,100}"
                                         required
                                         autoComplete="name"
-                                        title="От 2 до 100 букв; допустимы пробелы, дефисы и апострофы"
+                                        title="От 2 до 100 символов"
                                         placeholder="Как к вам обращаться"
                                         aria-invalid={Boolean(errors.name)}
                                         aria-describedby={

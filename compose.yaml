@@ -73,15 +73,23 @@ services:
     container_name: developer-landing-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: test-dev-landing
-      POSTGRES_USER: developer
-      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: "${DB_DATABASE:-test-dev-landing}"
+      POSTGRES_USER: "${DB_USERNAME:-developer}"
+      POSTGRES_PASSWORD: "${DB_PASSWORD:-secret}"
     ports:
       - "127.0.0.1:5434:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U developer -d test-dev-landing"]
+      test:
+        [
+          "CMD",
+          "pg_isready",
+          "-U",
+          "${DB_USERNAME:-developer}",
+          "-d",
+          "${DB_DATABASE:-test-dev-landing}",
+        ]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -102,12 +110,12 @@ services:
       retries: 10
 
   mailpit:
-    image: axllent/mailpit:latest
+    image: axllent/mailpit:v1.30.6
     container_name: developer-landing-mailpit
     restart: unless-stopped
     ports:
-      - "1026:1025"
-      - "8026:8025"
+      - "127.0.0.1:1026:1025"
+      - "127.0.0.1:8026:8025"
 
 volumes:
   postgres_data:

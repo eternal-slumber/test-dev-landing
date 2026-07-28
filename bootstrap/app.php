@@ -20,7 +20,13 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->trustProxies(at: ['REMOTE_ADDR']);
+        $middleware->trustProxies(
+            at: ['REMOTE_ADDR'],
+            headers: Request::HEADER_X_FORWARDED_FOR
+                | Request::HEADER_X_FORWARDED_HOST
+                | Request::HEADER_X_FORWARDED_PORT
+                | Request::HEADER_X_FORWARDED_PROTO,
+        );
         $middleware->prepend(ApiRequestLogger::class);
 
         $middleware->encryptCookies(except: ['appearance']);

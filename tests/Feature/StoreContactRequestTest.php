@@ -68,18 +68,17 @@ test('phone accepts ten to fifteen digits', function (string $phone) use ($valid
     'fifteen digits' => '+123 (456) 789-012-345',
 ]);
 
-test('invalid name is rejected', function (string $name) use ($validContactData) {
+test('name accepts characters used in personal and company names', function (string $name) use ($validContactData) {
     $data = $validContactData();
     $data['name'] = $name;
 
     $validator = Validator::make($data, (new StoreContactRequest)->rules());
 
-    expect($validator->fails())->toBeTrue()
-        ->and($validator->errors()->has('name'))->toBeTrue();
+    expect($validator->passes())->toBeTrue();
 })->with([
-    'digits' => 'Иван 123',
-    'no letters' => '   ',
-    'unsupported symbol' => 'Иван @',
+    'company with digits' => 'Studio 42',
+    'company with punctuation' => 'ИП «Ромашка» №1',
+    'username' => '@artem',
 ]);
 
 test('invalid comment length is rejected', function (string $comment) use ($validContactData) {
@@ -95,9 +94,8 @@ test('invalid comment length is rejected', function (string $comment) use ($vali
     'too long' => str_repeat('a', 3001),
 ]);
 
-test('name and phone errors are returned in russian', function () use ($validContactData) {
+test('phone error is returned in russian', function () use ($validContactData) {
     $data = $validContactData();
-    $data['name'] = '12';
     $data['phone'] = 'call me!';
     $request = new StoreContactRequest;
 
@@ -107,8 +105,6 @@ test('name and phone errors are returned in russian', function () use ($validCon
         $request->messages(),
     );
 
-    expect($validator->errors()->first('name'))
-        ->toBe('Имя может содержать только буквы, пробелы, дефисы и апострофы.')
-        ->and($validator->errors()->first('phone'))
+    expect($validator->errors()->first('phone'))
         ->toBe('Введите номер телефона из 10–15 цифр.');
 });

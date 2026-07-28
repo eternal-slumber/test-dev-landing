@@ -83,6 +83,22 @@ test('valid contact request is accepted and stored', function () {
     Queue::assertNothingPushed();
 });
 
+test('contact input is normalized before storage', function () {
+    postContactRequest([
+        'name' => "\tStudio\n42\r",
+        'phone' => "\t+7 (999)\n123-45-67\r",
+        'email' => '  ARTEM@EXAMPLE.COM  ',
+        'comment' => "  Хочу обсудить разработку веб-сервиса.\n",
+    ])->assertCreated();
+
+    $contact = Contact::query()->sole();
+
+    expect($contact->name)->toBe('Studio 42')
+        ->and($contact->phone)->toBe('+7 (999) 123-45-67')
+        ->and($contact->email)->toBe('artem@example.com')
+        ->and($contact->comment)->toBe('Хочу обсудить разработку веб-сервиса.');
+});
+
 test('invalid contact request is rejected and not stored', function () {
     Log::shouldReceive('channel')->once()->with('api')->andReturnSelf();
     Log::shouldReceive('info')->once()->with('API request', Mockery::on(

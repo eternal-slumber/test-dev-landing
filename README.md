@@ -54,6 +54,8 @@ docker compose down
 ```
 
 Данные PostgreSQL и Redis сохраняются в Docker volumes.
+Порты приложения, PostgreSQL, Redis и Mailpit публикуются только на
+`127.0.0.1`.
 
 ## Переменные окружения
 
@@ -244,6 +246,7 @@ Timeout, ошибка соединения, HTTP `408`, `429` или `5xx` за�
 
 - rate limiting: Redis, по IP, значение задаётся `CONTACT_RATE_LIMIT`;
 - trusted proxy: используется адрес клиента из proxy-заголовков;
+- proxy-заголовки принимаются только от непосредственного локального proxy;
 - CORS: только `FRONTEND_URL`, без wildcard;
 - transactional outbox: запись контакта и фоновой задачи в одной DB-транзакции;
 - relay: конкурентный `FOR UPDATE SKIP LOCKED`, lease и backoff `10/60/300`;

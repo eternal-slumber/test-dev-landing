@@ -4,7 +4,7 @@ return [
 
     'paths' => ['api/*'],
 
-    'allowed_methods' => ['POST'],
+    'allowed_methods' => ['GET', 'POST', 'OPTIONS'],
 
     'allowed_origins' => [
         env('FRONTEND_URL', 'http://localhost:8000'),

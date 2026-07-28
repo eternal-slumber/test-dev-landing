@@ -52,9 +52,9 @@ return [
 
     'channels' => [
 
-        'api' => [
+        'requests' => [
             'driver' => 'daily',
-            'path' => storage_path('logs/api.log'),
+            'path' => storage_path('logs/requests.log'),
             'level' => env('LOG_LEVEL', 'info'),
             'days' => 14,
             'replace_placeholders' => true,

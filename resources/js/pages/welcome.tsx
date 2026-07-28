@@ -753,9 +753,10 @@ export default function Welcome() {
                                     id="email"
                                     type="email"
                                     value={data.email}
-                                    onChange={(event) =>
-                                        setData('email', event.target.value)
-                                    }
+                                    onChange={(event) => {
+                                        setData('email', event.target.value);
+                                        clearErrors('email');
+                                    }}
                                     maxLength={255}
                                     required
                                     autoComplete="email"
@@ -779,9 +780,10 @@ export default function Welcome() {
                                 <textarea
                                     id="comment"
                                     value={data.comment}
-                                    onChange={(event) =>
-                                        setData('comment', event.target.value)
-                                    }
+                                    onChange={(event) => {
+                                        setData('comment', event.target.value);
+                                        clearErrors('comment');
+                                    }}
                                     minLength={10}
                                     maxLength={3000}
                                     required
@@ -790,8 +792,8 @@ export default function Welcome() {
                                     aria-invalid={Boolean(errors.comment)}
                                     aria-describedby={
                                         errors.comment
-                                            ? 'comment-error'
-                                            : undefined
+                                            ? 'comment-ai-notice comment-error'
+                                            : 'comment-ai-notice'
                                     }
                                     className="min-h-36 w-full resize-y rounded-xl border border-slate-950/10 bg-white/70 px-4 py-3 text-base shadow-xs transition-[color,box-shadow] outline-none placeholder:text-slate-400 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 sm:text-sm dark:border-white/10 dark:bg-white/5 dark:aria-invalid:ring-destructive/40"
                                 />
@@ -799,6 +801,15 @@ export default function Welcome() {
                                     id="comment-error"
                                     message={errors.comment}
                                 />
+                                <p
+                                    id="comment-ai-notice"
+                                    className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm leading-6 text-amber-950 dark:text-amber-100"
+                                >
+                                    Текст сообщения может обрабатываться внешним
+                                    AI-провайдером для классификации обращения.
+                                    Не указывайте пароли, платёжные данные и
+                                    другую конфиденциальную информацию.
+                                </p>
                             </div>
 
                             {wasSuccessful && (

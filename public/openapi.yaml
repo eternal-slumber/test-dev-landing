@@ -153,8 +153,11 @@ components:
         IdempotencyKey:
             name: Idempotency-Key
             in: header
-            required: true
-            description: UUID запроса. Повтор с теми же данными безопасен.
+            required: false
+            description: >
+                Необязательный UUID. Повторный запрос с тем же ключом и тем же
+                содержимым возвращает первоначальный результат. Без заголовка
+                сервер создаёт новый UUID для каждого запроса.
             schema:
                 type: string
                 format: uuid

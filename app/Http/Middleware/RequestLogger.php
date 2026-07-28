@@ -12,15 +12,11 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Throwable;
 
-final class ApiRequestLogger
+final class RequestLogger
 {
     /** @param Closure(Request): Response $next */
     public function handle(Request $request, Closure $next): Response
     {
-        if (! $request->is('api/*')) {
-            return $next($request);
-        }
-
         $requestId = (string) Str::uuid();
         $startedAt = (int) hrtime(true);
         $status = 500;
@@ -60,7 +56,7 @@ final class ApiRequestLogger
         int $startedAt,
     ): void {
         try {
-            Log::channel('api')->info('API request', [
+            Log::channel('requests')->info('HTTP request', [
                 'request_id' => $requestId,
                 'method' => $request->method(),
                 'path' => $request->path(),

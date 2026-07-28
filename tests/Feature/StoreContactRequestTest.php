@@ -28,7 +28,7 @@ test('contact field is required', function (string $field) use ($validContactDat
 
     expect($validator->fails())->toBeTrue()
         ->and($validator->errors()->has($field))->toBeTrue();
-})->with(['name', 'phone', 'email', 'comment', 'idempotency_key']);
+})->with(['name', 'phone', 'email', 'comment']);
 
 test('invalid email is rejected', function () use ($validContactData) {
     $data = $validContactData();

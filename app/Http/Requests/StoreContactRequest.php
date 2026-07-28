@@ -18,7 +18,8 @@ class StoreContactRequest extends FormRequest
             'phone' => $this->normalizeSingleLine($this->input('phone')),
             'email' => is_string($email) ? Str::lower(trim($email)) : $email,
             'comment' => is_string($comment) ? trim($comment) : $comment,
-            'idempotency_key' => $this->header('Idempotency-Key'),
+            'idempotency_key' => $this->header('Idempotency-Key')
+                ?? (string) Str::uuid(),
         ]);
     }
 
@@ -52,7 +53,7 @@ class StoreContactRequest extends FormRequest
             ],
             'email' => ['required', 'string', 'email:rfc', 'max:255'],
             'comment' => ['required', 'string', 'min:10', 'max:3000'],
-            'idempotency_key' => ['required', 'uuid'],
+            'idempotency_key' => ['uuid'],
         ];
     }
 

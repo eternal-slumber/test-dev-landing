@@ -1,15 +1,17 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/react-starter-kit",
+    "name": "eternal-slumber/test-dev-landing",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
+    "description": "Laravel contact API with AI classification and reliable asynchronous email processing.",
     "keywords": [
         "laravel",
-        "framework"
+        "contact-api",
+        "openrouter",
+        "transactional-outbox"
     ],
     "license": "MIT",
     "require": {
-        "php": "^8.3",
+        "php": "^8.4",
         "inertiajs/inertia-laravel": "^3.0",
         "laravel/chisel": "^0.1.0",
         "laravel/framework": "^13.17",

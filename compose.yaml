@@ -68,6 +68,27 @@ services:
     healthcheck:
       disable: true
 
+  scheduler:
+    image: serversideup/php:8.4-fpm-nginx
+    working_dir: /var/www/html
+    command:
+      - php
+      - artisan
+      - schedule:work
+    volumes:
+      - ./:/var/www/html
+    environment:
+      PHP_OPCACHE_ENABLE: "0"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    stop_grace_period: 20s
+    healthcheck:
+      disable: true
+
   postgres:
     image: postgres:17-alpine
     container_name: developer-landing-postgres

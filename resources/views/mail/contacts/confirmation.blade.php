@@ -10,7 +10,4 @@
 <x-mail::panel>
 {{ $contact->comment }}
 </x-mail::panel>
-
-С уважением,<br>
-{{ config('app.name') }}
 </x-mail::message>

@@ -31,7 +31,8 @@ test('owner email contains AI analysis, contact details and reply link', functio
             'Ответить отправителю',
             $contact->comment,
         ])
-        ->assertSeeInHtml($mailto);
+        ->assertSeeInHtml($mailto)
+        ->assertDontSeeInHtml('Laravel');
 });
 
 test('owner email shows when classification is unavailable', function () {
@@ -63,5 +64,6 @@ test('confirmation email contains the user comment without internal details', fu
         ->assertDontSeeInHtml($contact->ai_category)
         ->assertDontSeeInHtml($contact->ai_summary)
         ->assertDontSeeInHtml($contact->ai_suggested_reply)
-        ->assertDontSeeInHtml('AI-анализ временно недоступен.');
+        ->assertDontSeeInHtml('AI-анализ временно недоступен.')
+        ->assertDontSeeInHtml('Laravel');
 });

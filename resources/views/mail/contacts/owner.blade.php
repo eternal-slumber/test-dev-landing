@@ -36,6 +36,4 @@
 <x-mail::panel>
 {{ $contact->comment }}
 </x-mail::panel>
-
-{{ config('app.name') }}
 </x-mail::message>

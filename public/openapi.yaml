@@ -3,9 +3,12 @@ info:
     title: Developer Landing Contact API
     version: 1.0.0
     description: API формы обратной связи с AI-классификацией и email-уведомлениями.
+    license:
+        name: Proprietary
 servers:
-    - url: http://localhost:8000
-      description: Local Docker environment
+    - url: /
+      description: Current environment
+security: []
 paths:
     /api/health:
         get:
@@ -226,22 +229,26 @@ components:
                     type: string
                     minLength: 2
                     maxLength: 100
-                    example: Артем
+                    examples:
+                        - Артем
                 phone:
                     type: string
                     maxLength: 30
                     pattern: '^\+?(?=(?:\D*\d){10,15}\D*$)[0-9\s()\-]+$'
-                    example: +7 (999) 123-45-67
+                    examples:
+                        - +7 (999) 123-45-67
                 email:
                     type: string
                     format: email
                     maxLength: 255
-                    example: artem@example.com
+                    examples:
+                        - artem@example.com
                 comment:
                     type: string
                     minLength: 10
                     maxLength: 3000
-                    example: Хочу обсудить разработку веб-сервиса.
+                    examples:
+                        - Хочу обсудить разработку веб-сервиса.
         ContactAcceptedResponse:
             type: object
             additionalProperties: false

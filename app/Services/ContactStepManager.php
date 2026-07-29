@@ -7,6 +7,16 @@ use Illuminate\Support\Facades\DB;
 
 final class ContactStepManager
 {
+    public const int MAX_ATTEMPTS = 4;
+
+    public const int FIRST_RETRY_DELAY_SECONDS = 10;
+
+    public const int SECOND_RETRY_DELAY_SECONDS = 60;
+
+    public const int THIRD_RETRY_DELAY_SECONDS = 300;
+
+    private const int LEASE_SECONDS = 120;
+
     public function claim(
         int $contactId,
         string $type,
@@ -23,6 +33,10 @@ final class ContactStepManager
                 return false;
             }
 
+            if ($step->attempts >= self::MAX_ATTEMPTS) {
+                return false;
+            }
+
             if (
                 $step->status === ContactStep::STATUS_PROCESSING
                 && $step->locked_by !== $workerId
@@ -36,13 +50,23 @@ final class ContactStepManager
                 'attempts' => $step->attempts + 1,
                 'last_error' => null,
                 'locked_by' => $workerId,
-                'locked_until' => now()->addMinutes(2),
+                'locked_until' => now()->addSeconds(self::LEASE_SECONDS),
                 'started_at' => $step->started_at ?? now(),
                 'finished_at' => null,
             ]);
 
             return true;
         });
+    }
+
+    public function retryDelayAfterAttempt(int $attempts): ?int
+    {
+        return match ($attempts) {
+            0, 1 => self::FIRST_RETRY_DELAY_SECONDS,
+            2 => self::SECOND_RETRY_DELAY_SECONDS,
+            3 => self::THIRD_RETRY_DELAY_SECONDS,
+            default => null,
+        };
     }
 
     public function complete(

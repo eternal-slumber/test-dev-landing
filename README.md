@@ -260,8 +260,10 @@ Timeout, ошибка соединения, HTTP `408`, `429` или `5xx` за�
 - AI: 4 попытки для временных ошибок с backoff `10/60/300`, затем fallback;
 - email: две независимые Redis-задачи, 4 попытки с backoff `10/60/300`;
 - step ledger: `pending`, `processing`, `succeeded`/`fallback`/`sent`, `failed`;
-- просроченный `processing` lease переводится scheduler-командой
-  `contacts:reconcile-stale` в `failed`;
+- scheduler учитывает номер попытки и полный интервал `lease + backoff`;
+  потерянный retryable-шаг начинает новый согласованный retry-цикл через
+  outbox, а исчерпанный AI-шаг переходит в fallback и ставит оба письма в
+  очередь;
 - idempotency: unique UUID предотвращает повторные записи и уведомления;
 - HTTP request logs: `storage/logs/requests-YYYY-MM-DD.log`, хранение 14 дней;
 - логируются все запросы, обработанные Laravel; ассеты, которые nginx/Vite
@@ -279,8 +281,8 @@ docker compose exec app php artisan contact:retry-failed 123
 Команда сбрасывает все `failed`-шаги указанного обращения и переоткрывает
 соответствующие outbox-сообщения. Уже завершённые шаги она не затрагивает.
 Команда `contacts:reconcile-stale` запускается контейнером `scheduler` каждые
-пять минут, поэтому сбой записи внутри `failed()` не оставляет шаг навсегда в
-`processing`.
+пять минут. Она не прерывает штатно отложенные queue retry и автоматически
+восстанавливает действительно потерянную обработку после полного retry-окна.
 
 SMTP работает с гарантией at-least-once. Редкий дубль возможен, если почтовый
 сервер принял письмо, но worker завершился до записи статуса `sent`.

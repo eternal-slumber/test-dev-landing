@@ -16,8 +16,12 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Throwable;
 
-#[Tries(4)]
-#[Backoff(10, 60, 300)]
+#[Tries(ContactStepManager::MAX_ATTEMPTS)]
+#[Backoff(
+    ContactStepManager::FIRST_RETRY_DELAY_SECONDS,
+    ContactStepManager::SECOND_RETRY_DELAY_SECONDS,
+    ContactStepManager::THIRD_RETRY_DELAY_SECONDS,
+)]
 #[Timeout(30)]
 final class SendContactConfirmationEmail implements ShouldQueue
 {
